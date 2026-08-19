@@ -1,1 +1,52 @@
+name: Apply to Job
 
+on:
+  workflow_dispatch:
+    inputs:
+      offer:
+        description: 'URL de la oferta o email de contacto'
+        required: true
+        type: string
+      notes:
+        description: 'Notas adicionales (opcional)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Scrape offer (if URL)
+        if: startsWith(inputs.offer, 'http')
+        run: python scripts/scrape_offer.py
+        env:
+          OFFER_URL: ${{ inputs.offer }}
+
+      - name: Generate personalized message
+        run: python scripts/generate_message.py
+        env:
+          OFFER_URL: ${{ inputs.offer }}
+          NOTES: ${{ inputs.notes }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+      - name: Send email with CV
+        run: python scripts/send_email.py
+        env:
+          OFFER_URL: ${{ inputs.offer }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASS: ${{ secrets.GMAIL_APP_PASS }}
+          CONTACT_EMAIL: ${{ secrets.CONTACT_EMAIL }}
